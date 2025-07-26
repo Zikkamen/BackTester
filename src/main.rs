@@ -2,19 +2,16 @@ mod credentials_reader;
 mod data_service;
 mod clients;
 mod values;
+mod stock_market;
 
 use chrono::{Utc, TimeZone};
-use credentials_reader::CredentialsReader;
-use data_service::DataService;
+
+use crate::stock_market::StockMarket;
 
 #[tokio::main]
 async fn main() {
-    let credentials_reader = CredentialsReader::new("./credentials/api_keys.xml");
-    let credentials_map = credentials_reader.get_credentials();
-
-    let data_service = DataService::new(&credentials_map);
-    data_service.get_trades("SPY", &Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap()).await;
-    data_service.get_quotes("SPY", &Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap()).await;
+    let start_date = Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap();
+    let stock_market = StockMarket::new(start_date, start_date);
 
     println!("Hello, world!");
 }

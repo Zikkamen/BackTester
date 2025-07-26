@@ -1,17 +1,20 @@
-use std::{collections::HashMap, path::Path, fs::{self, File}, io::Write};
+use std::{path::Path, fs::{self, File}, io::Write};
 
 use chrono::{DateTime, Utc};
 
-use crate::{clients::AlpacaClient, values::{TradeData, QuoteData}};
+use crate::{clients::AlpacaClient, values::{TradeData, QuoteData}, credentials_reader::CredentialsReader};
 
 pub struct DataService {
     client: AlpacaClient,
 }
 
 impl DataService {
-    pub fn new(credentials_map: &HashMap<String, String>) -> Self {
+    pub fn new() -> Self {
+        let credentials_reader = CredentialsReader::new("./credentials/api_keys.xml");
+        let credentials_map = credentials_reader.get_credentials();
+
         DataService {
-            client: AlpacaClient::new(credentials_map),
+            client: AlpacaClient::new(&credentials_map),
         }
     }
 

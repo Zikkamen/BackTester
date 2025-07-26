@@ -8,7 +8,7 @@ use reqwest::{
 
 use serde_json::Value;
 
-use crate::values::TradeData;
+use crate::values::{TradeData, QuoteData};
 
 pub struct AlpacaClient {
     client: Client,
@@ -41,6 +41,18 @@ impl AlpacaClient {
         trades_list.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
 
         trades_list
+    }
+
+    pub async fn get_quotes(&self, stock_name: &str, day: &str) -> Vec<QuoteData> {
+        let mut quotes_list = Vec::new();
+
+        for json_value in self.get_values(stock_name, "quotes", day).await {
+            quotes_list.push(QuoteData::from_value(stock_name, &json_value));
+        }
+
+        quotes_list.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+
+        quotes_list
     }
 
     async fn get_values(&self, stock_name: &str, query_type: &str, day: &str) -> Vec<Value> {

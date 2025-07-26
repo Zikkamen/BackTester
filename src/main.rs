@@ -14,6 +14,7 @@ async fn main() {
 
     let data_service = DataService::new(&credentials_map);
     data_service.get_trades("SPY", &Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap()).await;
+    data_service.get_quotes("SPY", &Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap()).await;
 
     println!("Hello, world!");
 }

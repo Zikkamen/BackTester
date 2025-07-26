@@ -32,12 +32,24 @@ impl AlpacaClient {
     }
 
     pub async fn get_trades(&self, stock_name: &str, day: &str) -> Vec<TradeData> {
-        let mut page_token = None;
         let mut trades_list = Vec::new();
 
+        for json_value in self.get_values(stock_name, "trades", day).await {
+            trades_list.push(TradeData::from_value(stock_name, &json_value));
+        }
+
+        trades_list.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+
+        trades_list
+    }
+
+    async fn get_values(&self, stock_name: &str, query_type: &str, day: &str) -> Vec<Value> {
+        let mut page_token = None;
+        let mut value_list = Vec::new();
+
         loop {
-            let json_body = self.query_trades(stock_name, page_token, day).await;
-            let json_list = match json_body["trades"].as_array() {
+            let json_body = self.query_trades(stock_name, query_type, page_token, day).await;
+            let json_list = match json_body[query_type].as_array() {
                 Some(v) => v,
                 None => break,
             };
@@ -45,8 +57,7 @@ impl AlpacaClient {
             for data_row in json_list.into_iter() {
                 if data_row["x"] == "D" { continue; }
 
-                let trade = TradeData::from_value(stock_name, &data_row);
-                trades_list.push(trade);
+                value_list.push(data_row.clone());
             }
 
             page_token = match json_body["next_page_token"].as_str() {
@@ -55,13 +66,11 @@ impl AlpacaClient {
             };
         }
 
-        trades_list.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
-
-        trades_list
+        value_list
     }
 
-    async fn query_trades(&self, stock_name: &str, page_token: Option<String>, day: &str) -> Value {
-        let mut url = format!("{}/stocks/{}/trades?start={day}T03:00:00-04:00&end={day}T23:00:00-04:00&limit=10000&feed=sip&sort=asc", self.url, stock_name);
+    async fn query_trades(&self, stock_name: &str, query_type: &str, page_token: Option<String>, day: &str) -> Value {
+        let mut url = format!("{}/stocks/{stock_name}/{query_type}?start={day}T03:00:00-04:00&end={day}T23:00:00-04:00&limit=10000&feed=sip&sort=asc", self.url);
 
         if page_token.is_some() {
             url.push_str("&page_token=");

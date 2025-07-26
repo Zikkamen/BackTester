@@ -1,9 +1,14 @@
 use std::collections::HashMap;
+use tokio::time::{sleep, Duration};
 
 use reqwest::{
     Client,
     header:: {HeaderMap, HeaderValue},
 };
+
+use serde_json::Value;
+
+use crate::values::TradeData;
 
 pub struct AlpacaClient {
     client: Client,
@@ -24,6 +29,63 @@ impl AlpacaClient {
             client: client,
             url: "https://data.alpaca.markets/v2".to_owned(),
         }
+    }
+
+    pub async fn get_trades(&self, stock_name: &str, day: &str) -> Vec<TradeData> {
+        let mut page_token = None;
+        let mut trades_list = Vec::new();
+
+        loop {
+            let json_body = self.query_trades(stock_name, page_token, day).await;
+            let json_list = match json_body["trades"].as_array() {
+                Some(v) => v,
+                None => break,
+            };
+
+            for data_row in json_list.into_iter() {
+                if data_row["x"] == "D" { continue; }
+
+                let trade = TradeData::from_value(stock_name, &data_row);
+                trades_list.push(trade);
+            }
+
+            page_token = match json_body["next_page_token"].as_str() {
+                Some(v) => Some(v.to_owned()),
+                None => break,
+            };
+        }
+
+        trades_list.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+
+        trades_list
+    }
+
+    async fn query_trades(&self, stock_name: &str, page_token: Option<String>, day: &str) -> Value {
+        let mut url = format!("{}/stocks/{}/trades?start={day}T03:00:00-04:00&end={day}T23:00:00-04:00&limit=10000&feed=sip&sort=asc", self.url, stock_name);
+
+        if page_token.is_some() {
+            url.push_str("&page_token=");
+            url.push_str(&page_token.unwrap());
+        }
+
+        let body = self.send_request(&url).await;
+        serde_json::from_str(&body[..]).unwrap()
+    }
+
+    async fn send_request(&self, url: &String) -> String {
+        for _ in 0..12 {
+            let response = self.client.get(url).send().await.unwrap();
+
+            if response.status() == 429 {
+                let _ = sleep(Duration::from_secs(5));
+
+                continue;
+            }
+
+            return response.text().await.unwrap();
+        }
+
+        String::new()
     }
 }
 

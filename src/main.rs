@@ -1,9 +1,9 @@
 mod credentials_reader;
 mod data_service;
 mod clients;
+mod values;
 
-use std::collections::HashMap;
-
+use chrono::{Utc, TimeZone};
 use credentials_reader::CredentialsReader;
 use data_service::DataService;
 
@@ -13,6 +13,7 @@ async fn main() {
     let credentials_map = credentials_reader.get_credentials();
 
     let data_service = DataService::new(&credentials_map);
+    data_service.get_trades("SPY", &Utc.with_ymd_and_hms(2025, 7, 25, 0, 0, 0).unwrap()).await;
 
     println!("Hello, world!");
 }
